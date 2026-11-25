@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Alimentação</title>
+  <meta name="description" content="Controle diário de alimentação: macros, vitaminas, minerais e aminoácidos.">
+  <meta name="theme-color" content="#F7F7F5">
+  <meta name="color-scheme" content="light dark">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="32x32" href="icones/icone-32.png">
+  <link rel="apple-touch-icon" href="icones/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Alimentação">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="stylesheet" href="css/estilo.css">
+  <script>
+    // Aplica o tema salvo antes de desenhar a página, para não piscar.
+    try {
+      var t = JSON.parse(localStorage.getItem('alimentacao:v1') || '{}').tema;
+      if (t === 'claro' || t === 'escuro') document.documentElement.dataset.tema = t;
+    } catch (e) {}
+  </script>
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <main id="conteudo" aria-live="polite">
+    <div class="tela"><p class="suave">Carregando…</p></div>
+  </main>
+  <nav id="nav" aria-label="Seções"></nav>
+  <input type="file" id="arquivo-backup" accept="application/json,.json" hidden>
+  <noscript>Este app precisa de JavaScript.</noscript>
+</body>
+</html>
