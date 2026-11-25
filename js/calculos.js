@@ -1,5 +1,5 @@
 // Cálculos puros (sem DOM, sem armazenamento): metas, totais do dia e sugestões.
-import { MICROS, AMINOACIDOS, CHAVES, IDEIAS } from './nutrientes.js';
+import { MICROS, AMINOACIDOS, CHAVES, IDEIAS, CEREBRO } from './nutrientes.js';
 
 export const FATOR_ROTINA = { sentado: 1.3, empe: 1.45, bracal: 1.6 };
 export const AJUSTE_OBJETIVO = { perder: 0.85, manter: 1, ganhar: 1.1 };
@@ -152,13 +152,17 @@ export function sugestoes(tot, metas, alimentos) {
     if (tot[n.k] >= metas[n.k] * 0.9) continue;
     alvos.push({ ...n, meta: metas[n.k], falta: metas[n.k] - tot[n.k], ideia: IDEIAS.amino });
   }
+  // Nutrientes do cérebro vêm primeiro (foco mental é a prioridade do João).
+  const peso = (a) => (CEREBRO.includes(a.k) ? 0 : 1);
+  alvos.sort((a, b) => peso(a) - peso(b));
+  for (const a of alvos) a.cerebro = CEREBRO.includes(a.k);
   const lista = alvos.map((alvo) => ({ alvo, sugestao: sugerirPara(alvo, alimentos) }));
 
   // Plano combinado: resolve do nutriente mais em falta para o menos e, a cada
   // escolha, soma o que ela já cobre dos outros (evita alimentos redundantes).
   const plano = {};
   const acumulado = { ...tot };
-  const ordem = [...alvos].sort((a, b) => tot[a.k] / a.meta - tot[b.k] / b.meta);
+  const ordem = [...alvos].sort((a, b) => peso(a) - peso(b) || tot[a.k] / a.meta - tot[b.k] / b.meta);
   for (const alvo of ordem) {
     const falta = alvo.meta - acumulado[alvo.k];
     if (falta <= alvo.meta * 0.1) continue;
@@ -169,4 +173,30 @@ export function sugestoes(tot, metas, alimentos) {
     for (const k of CHAVES) acumulado[k] += (s.alimento.n[k] || 0) * fator;
   }
   return { lista, plano };
+}
+
+// ---------- água ----------
+// 35 ml por kg de peso, mais 500 ml no dia de treino.
+export function metaAgua(perfil, tipo) {
+  return Math.round(perfil.peso * 35 + (tipo === 'treino' ? 500 : 0));
+}
+
+// ---------- cafeína ----------
+export const LIMITE_CAFEINA = 400; // mg/dia para adultos saudáveis (EFSA/FDA)
+
+// entradas: [{ mg, hora: 'HH:MM' | null }]; ateHora: hora a partir da qual atrapalha o sono.
+export function avaliarCafeina(entradas = [], ateHora = 15) {
+  const total = entradas.reduce((a, e) => a + (Number(e.mg) || 0), 0);
+  const tardias = entradas.filter((e) => e.hora && Number(e.hora.split(':')[0]) >= ateHora);
+  return { total, acima: total > LIMITE_CAFEINA, tardias };
+}
+
+// ---------- energia estável ----------
+// Aviso quando muito da energia do dia vem de açúcar e falta fibra/proteína para
+// segurar a glicose. Heurística simples, não é medição de índice glicêmico.
+export function energiaInstavel(tot) {
+  if (!tot || tot.kcal < 150 || tot.carb <= 0) return false;
+  const fracaoAcucar = ((tot.acucar || 0) * 4) / tot.kcal;
+  const apoio = ((tot.fibra || 0) + (tot.prot || 0)) / tot.carb;
+  return fracaoAcucar >= 0.2 && apoio < 0.5;
 }

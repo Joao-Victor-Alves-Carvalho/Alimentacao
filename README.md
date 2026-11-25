@@ -9,6 +9,10 @@ essenciais**, com metas diferentes para **dia de treino** e **dia comum**.
 - **Hoje**: abre sempre no dia atual. Escolha treino ou comum e marque quanto
   comeu de cada alimento (medida caseira, com os gramas indicados, ou gramas).
   No fim da tela dá para mostrar ou ocultar a análise completa.
+  Também mostra o quadro **Cérebro** (ômega-3, colina, B12, folato, ferro,
+  vitamina D e magnésio), os contadores de **água** e **cafeína** (com aviso de
+  cafeína tarde) e um aviso de **energia instável** quando o dia tem muito
+  açúcar e pouca fibra e proteína.
 - **Análise**: tudo o que está baixo, na meta ou acima do limite, e sugestões
   de quanto comer dos seus alimentos para fechar as metas.
 - **Histórico**: últimos dias; toque num dia para ver e corrigir.

@@ -3,6 +3,7 @@ const CHAVE = 'alimentacao:v1';
 
 export const PERFIL_PADRAO = {
   peso: 80, altura: 178, idade: 30, sexo: 'M', rotina: 'sentado', objetivo: 'manter',
+  cafeinaAte: 15, // hora a partir da qual a cafeína atrapalha o sono
 };
 
 export function estadoVazio() {
@@ -11,7 +12,7 @@ export function estadoVazio() {
     perfil: { ...PERFIL_PADRAO },
     perfilDefinido: false,
     tema: 'sistema', // 'claro' | 'escuro' | 'sistema'
-    dias: {}, // 'AAAA-MM-DD' -> { tipo, itens: {id: qtd}, base: {id: alimento} }
+    dias: {}, // 'AAAA-MM-DD' -> { tipo, itens: {id: qtd}, base: {id: alimento}, agua: ml, cafeina: [{id, mg, hora}] }
     meus: [], // alimentos cadastrados no próprio app
     removidos: [], // ids de alimentos apagados do cardápio
     lista: {}, // id -> true/false (sobrescreve o padrão da lista rápida)

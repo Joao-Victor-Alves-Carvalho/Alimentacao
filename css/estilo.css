@@ -217,7 +217,7 @@ p { margin: 0; }
 .dia { gap: 10px; }
 .dia-topo { display: flex; align-items: center; gap: 8px; }
 .dia-topo strong { flex: 1; }
-.dia-barras { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; font-size: 12px; color: var(--suave-2); }
+.dia-barras { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 14px; font-size: 12px; color: var(--suave-2); }
 .mini { display: flex; flex-direction: column; gap: 4px; }
 .tag { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: var(--seg-fundo); color: var(--suave-2); }
 .tag-treino { background: var(--tag-treino); color: var(--tag-treino-t); }
@@ -257,3 +257,12 @@ details summary { cursor: pointer; color: var(--acento); font-size: 14px; font-w
 #nav button[aria-current="page"] { color: var(--acento); }
 
 button:focus-visible, summary:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+
+/* Foco mental */
+.cartao-cerebro { gap: 10px; }
+.grade-cerebro { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 14px; font-size: 12px; color: var(--suave-2); }
+.tag-cerebro { font-size: 11px; padding: 2px 8px; margin-left: 4px; background: var(--tag-treino); color: var(--tag-treino-t); vertical-align: middle; }
+.pill-remover { background: var(--acento-suave); border-color: var(--acento-borda); color: var(--acento-texto); }
+.btn:disabled { opacity: 0.4; cursor: default; }
+.acoes-agua { display: grid; grid-template-columns: 52px 1fr 1fr; gap: 8px; }
+.acoes-agua .btn { padding: 0 8px; }
