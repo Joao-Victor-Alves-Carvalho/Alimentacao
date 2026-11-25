@@ -34,7 +34,12 @@ Brasil.
 
 ## Regras
 
-- Fluxo: uma ideia = uma branch = um PR para `main`. Nunca faça merge.
+- Fluxo autorizado pelo João (vale para toda tarefa): branch própria a partir da
+  `main` atualizada → PR → esperar o workflow `testes` passar → merge pelo próprio
+  Claude → conferir que o GitHub Pages publicou (o Pages publica sozinho a partir
+  da `main`) → avisar o João que é só fechar e abrir o app. Se os testes falharem,
+  corrigir na mesma branch ou num novo PR; nunca enviar direto para a `main`, nunca
+  pular testes e nunca fazer merge com teste falhando.
 - Commits convencionais (`feat:`, `fix:`, `docs:`, `test:`, `chore:`).
 - Sem telemetria nem servidor: os registros do João ficam só no aparelho.
 - Antes de entregar: `npm test` e `npm run check`. Testes não confirmam a
