@@ -26,6 +26,8 @@ Brasil.
    Fontes: TACO (Unicamp) e USDA FoodData Central; aminoácidos e vitaminas que a
    TACO não traz vêm da USDA. Aminoácidos em gramas; `metcys` = metionina +
    cisteína, `phetyr` = fenilalanina + tirosina.
+   `acucar` = açúcares totais (naturais + adicionados), usado no aviso de
+   "energia instável".
 3. Informe no PR a fonte e a medida caseira usada (ex.: "1 concha = 86 g").
 4. Rode `npm test` (o teste confere chaves, valores e kcal coerentes com macros).
 5. Aumente `VERSAO` em `sw.js`.

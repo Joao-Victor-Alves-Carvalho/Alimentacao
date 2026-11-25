@@ -23,6 +23,10 @@ export const MINERAIS = [
 
 export const FIBRA = { k: 'fibra', nome: 'Fibra', u: 'g' };
 
+// Açúcares totais (naturais + adicionados). Sem meta própria: entra no aviso de
+// "energia instável" junto com fibra e proteína.
+export const ACUCAR = { k: 'acucar', nome: 'Açúcares', u: 'g' };
+
 export const VITAMINAS = [
   { k: 'vitA', nome: 'Vitamina A', u: 'µg' },
   { k: 'vitC', nome: 'Vitamina C', u: 'mg' },
@@ -62,7 +66,7 @@ export const AMINOACIDOS = [
 
 // Tudo o que entra na contagem "na meta" e nas sugestões (sódio é limite máximo).
 export const MICROS = [FIBRA, ...VITAMINAS, ...MINERAIS, ...OUTROS];
-export const TODOS = [...MACROS, ...MICROS, ...AMINOACIDOS];
+export const TODOS = [...MACROS, ACUCAR, ...MICROS, ...AMINOACIDOS];
 export const CHAVES = TODOS.map((n) => n.k);
 
 // Ideias de alimentos para cadastrar quando o cardápio não cobre um nutriente.
@@ -95,3 +99,17 @@ export const IDEIAS = {
   creatina: 'carne vermelha, peixes ou creatina monoidratada',
   amino: 'carnes, peixes, ovos, whey',
 };
+
+// Nutrientes ligados a foco, memória e disposição mental (quadro "Cérebro").
+// Têm prioridade nas sugestões.
+export const CEREBRO = ['epadha', 'colina', 'b12', 'b9', 'fe', 'vitD', 'mg'];
+
+// Cafeína típica por porção (mg). Varia por marca e preparo.
+export const CAFEINA = [
+  { id: 'cafe', nome: 'Café coado', porcao: 'xícara 150 ml', mg: 90 },
+  { id: 'espresso', nome: 'Espresso', porcao: '1 dose', mg: 65 },
+  { id: 'energetico', nome: 'Energético', porcao: 'lata 250 ml', mg: 80 },
+  { id: 'pretreino', nome: 'Pré-treino', porcao: '1 dose', mg: 200 },
+  { id: 'cha', nome: 'Chá preto ou mate', porcao: 'xícara 200 ml', mg: 40 },
+  { id: 'refri', nome: 'Refrigerante de cola', porcao: 'lata 350 ml', mg: 35 },
+];
