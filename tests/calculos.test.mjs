@@ -107,3 +107,14 @@ test('nenhuma sugestão passa de ~400 kcal', () => {
     assert.ok(kcal <= 400 + 1e-9, `${s.alimento.id} x${s.qtd} = ${kcal} kcal`);
   }
 });
+
+test('ômega-3 e creatina: metas e sugestões com peixe ou suplemento', () => {
+  const metas = calcularMetas(perfil, 'treino');
+  assert.equal(metas.epadha, 0.5);
+  assert.equal(metas.creatina, 3);
+  const omega = sugerirPara({ k: 'epadha', meta: 0.5, falta: 0.5 }, dados.alimentos);
+  assert.ok(omega && !omega.parcial && omega.fornece >= 0.5);
+  const cr = sugerirPara({ k: 'creatina', meta: 3, falta: 3 }, dados.alimentos);
+  assert.equal(cr.alimento.id, 'creatina');
+  assert.equal(cr.qtd, 1);
+});

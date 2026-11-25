@@ -6,6 +6,8 @@ export const AJUSTE_OBJETIVO = { perder: 0.85, manter: 1, ganhar: 1.1 };
 export const EXTRA_TREINO = 0.25;
 
 // Ingestão diária recomendada (IOM/DRI) por sexo e idade. Sódio: limite da OMS.
+// EPA + DHA: 0,5 g/dia (ISSFAL/AHA). Creatina: 3 g/dia, referência de desempenho
+// (não é nutriente essencial; carnes e peixes dão cerca de 0,4 g por 100 g).
 export function metasMicros({ sexo, idade }, kcal) {
   const f = sexo === 'F';
   return {
@@ -28,6 +30,11 @@ export function metasMicros({ sexo, idade }, kcal) {
     b1: f ? 1.1 : 1.2,
     b2: f ? 1.1 : 1.3,
     b3: f ? 14 : 16,
+    b5: 5,
+    epadha: 0.5,
+    ala: f ? 1.1 : 1.6,
+    colina: f ? 425 : 550,
+    creatina: 3,
     b6: idade > 50 ? (f ? 1.5 : 1.7) : 1.3,
     b9: 400,
     b12: 2.4,
@@ -145,11 +152,21 @@ export function sugestoes(tot, metas, alimentos) {
     if (tot[n.k] >= metas[n.k] * 0.9) continue;
     alvos.push({ ...n, meta: metas[n.k], falta: metas[n.k] - tot[n.k], ideia: IDEIAS.amino });
   }
+  const lista = alvos.map((alvo) => ({ alvo, sugestao: sugerirPara(alvo, alimentos) }));
+
+  // Plano combinado: resolve do nutriente mais em falta para o menos e, a cada
+  // escolha, soma o que ela já cobre dos outros (evita alimentos redundantes).
   const plano = {};
-  const lista = alvos.map((alvo) => {
-    const s = sugerirPara(alvo, alimentos);
-    if (s && !s.parcial) plano[s.alimento.id] = Math.max(plano[s.alimento.id] ?? 0, s.qtd);
-    return { alvo, sugestao: s };
-  });
+  const acumulado = { ...tot };
+  const ordem = [...alvos].sort((a, b) => tot[a.k] / a.meta - tot[b.k] / b.meta);
+  for (const alvo of ordem) {
+    const falta = alvo.meta - acumulado[alvo.k];
+    if (falta <= alvo.meta * 0.1) continue;
+    const s = sugerirPara({ ...alvo, falta }, alimentos);
+    if (!s || s.parcial) continue;
+    plano[s.alimento.id] = (plano[s.alimento.id] ?? 0) + s.qtd;
+    const fator = gramasDe(s.alimento, s.qtd) / 100;
+    for (const k of CHAVES) acumulado[k] += (s.alimento.n[k] || 0) * fator;
+  }
   return { lista, plano };
 }

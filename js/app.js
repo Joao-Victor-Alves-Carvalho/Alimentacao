@@ -1,5 +1,5 @@
 // Interface do app. Renderiza as telas com HTML simples e delega os eventos.
-import { MACROS, FIBRA, VITAMINAS, MINERAIS, AMINOACIDOS, TODOS } from './nutrientes.js';
+import { MACROS, FIBRA, VITAMINAS, MINERAIS, OUTROS, AMINOACIDOS, TODOS } from './nutrientes.js';
 import { calcularMetas, somarDia, status, contarNaMeta, sugestoes, gramasDe, resumoDia } from './calculos.js';
 import { carregar, salvar, importar, chaveData, dataDeChave, somarDias, PERFIL_PADRAO } from './armazenamento.js';
 
@@ -85,7 +85,7 @@ function linhaNutriente(n, tot, metas) {
   const st = status(v, m, n.limite);
   const txt = n.limite && st === 'ok' ? 'dentro do limite' : TXT_STATUS[st];
   return `<div class="nutri">
-    <div class="nutri-topo"><span class="nutri-nome">${n.nome} <span class="st st-${st}">· ${txt}</span></span>
+    <div class="nutri-topo"><span class="nutri-nome">${n.nome} <span class="st st-${st}">· ${txt}</span>${n.dica ? `<span class="nutri-dica">${n.dica}</span>` : ''}</span>
     <span class="nutri-valor">${fmt(v)} / ${fmt(m)} ${n.u}</span></div>
     <div class="barra"><span class="b-${st}" style="width:${pct(v, m)}%"></span></div></div>`;
 }
@@ -94,6 +94,7 @@ function gruposAnalise(tot, metas) {
   const c = contarNaMeta(tot, metas);
   const vit = VITAMINAS.filter((n) => status(tot[n.k], metas[n.k]) === 'ok').length;
   const min = MINERAIS.filter((n) => !n.limite && status(tot[n.k], metas[n.k]) === 'ok').length;
+  const out = OUTROS.filter((n) => status(tot[n.k], metas[n.k]) === 'ok').length;
   const grupo = (titulo, cont, lista) => `<section class="cartao">
       <div class="cartao-topo"><h2>${titulo}</h2><span class="suave">${cont}</span></div>
       ${lista.map((n) => linhaNutriente(n, tot, metas)).join('')}</section>`;
@@ -101,6 +102,7 @@ function gruposAnalise(tot, metas) {
     grupo('Energia e macros', '', [...MACROS, FIBRA]),
     grupo('Vitaminas', `${vit} de ${VITAMINAS.length} na meta`, VITAMINAS),
     grupo('Minerais', `${min} de ${MINERAIS.length - 1} na meta`, MINERAIS),
+    grupo('Ômega-3 e desempenho', `${out} de ${OUTROS.length} na meta`, OUTROS),
     grupo('Aminoácidos essenciais', `${c.aminos} de ${c.aminosTotal} na meta`, AMINOACIDOS),
   ].join('');
 }
@@ -164,7 +166,7 @@ function telaHoje() {
     </section>
     <button class="cartao cartao-link" data-acao="aba" data-aba="analise">
       <span class="cartao-link-txt"><strong>Micronutrientes e aminoácidos</strong>
-        <span class="suave">Vitaminas e minerais: ${c.micros} de ${c.microsTotal} na meta · sódio ${sodio}</span>
+        <span class="suave">Vitaminas, minerais, ômega-3 e outros: ${c.micros} de ${c.microsTotal} na meta · sódio ${sodio}</span>
         <span class="suave">Aminoácidos essenciais: ${c.aminos} de ${c.aminosTotal} na meta</span></span>
       <span class="acento">Ver tudo ${icone(ICONES.dir, 18)}</span>
     </button>
@@ -214,19 +216,19 @@ function telaAnalise() {
       <span><i class="b-ok"></i>Na meta (90%+)</span><span><i class="b-perto"></i>Perto (50–89%)</span>
       <span><i class="b-baixo"></i>Baixo</span><span><i class="b-acima"></i>Acima do limite</span></div>
     ${baixos.length ? `<section class="faixa faixa-alerta"><strong>Ainda baixo</strong><span>${baixos.join(', ')}</span></section>` : ''}
-    ${!lista.length ? `<section class="faixa faixa-ok"><strong>Todas as vitaminas, minerais e aminoácidos estão na meta.</strong></section>` : `
+    ${!lista.length ? `<section class="faixa faixa-ok"><strong>Todos os micronutrientes, ômega-3 e aminoácidos estão na meta.</strong></section>` : `
     <section class="cartao">
       <div><h2>Como fechar as metas</h2><span class="suave">Sugestões usando só os alimentos do seu cardápio</span></div>
       ${planoHtml ? `<div class="plano">
         <span class="plano-titulo">Plano para o resto do dia</span>${planoHtml}
         <span>+${fmt(kcalPlano)} kcal · restam ${fmt(restam)} kcal na sua meta</span>
-        <strong>Com o plano: ${c2.micros} de ${c2.microsTotal} vitaminas e minerais e ${c2.aminos} de ${c2.aminosTotal} aminoácidos na meta.</strong>
+        <strong>Com o plano: ${c2.micros} de ${c2.microsTotal} micronutrientes e ${c2.aminos} de ${c2.aminosTotal} aminoácidos na meta.</strong>
         ${kcalPlano > restam ? '<span class="st-baixo">Atenção: o plano passa da sua meta de calorias. Escolha as sugestões mais importantes.</span>' : ''}
       </div>` : ''}
       ${sugHtml}
     </section>`}
     ${gruposAnalise(tot, metas)}
-    <p class="rodape">Vitaminas e minerais: ingestão diária recomendada (IOM) para seu sexo e idade. Fibra: 14 g por 1.000 kcal. Sódio: limite da OMS. Aminoácidos: referência da OMS por kg de peso.</p>
+    <p class="rodape">Vitaminas e minerais: ingestão diária recomendada (IOM) para seu sexo e idade. Fibra: 14 g por 1.000 kcal. Sódio: limite da OMS. Ômega-3 EPA + DHA: 0,5 g (ISSFAL/AHA). Creatina: 3 g, referência para quem treina, não é nutriente essencial. Aminoácidos: referência da OMS por kg de peso.</p>
   </div>`;
 }
 
@@ -280,7 +282,7 @@ function telaHistorico() {
 function destaques(a) {
   const metas = calcularMetas(est.perfil, 'comum');
   const p = porcaoInfo(a);
-  const d = [...VITAMINAS, ...MINERAIS, FIBRA].filter((n) => !n.limite && (a.n[n.k] || 0) * p.fator >= metas[n.k] * 0.15).map((n) => n.nome);
+  const d = [...VITAMINAS, ...MINERAIS, ...OUTROS, FIBRA].filter((n) => !n.limite && (a.n[n.k] || 0) * p.fator >= metas[n.k] * 0.15).map((n) => n.nome);
   return d.length ? d.join(', ') : 'energia';
 }
 

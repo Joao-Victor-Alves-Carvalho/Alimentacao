@@ -32,9 +32,19 @@ export const VITAMINAS = [
   { k: 'b1', nome: 'Tiamina (B1)', u: 'mg' },
   { k: 'b2', nome: 'Riboflavina (B2)', u: 'mg' },
   { k: 'b3', nome: 'Niacina (B3)', u: 'mg' },
+  { k: 'b5', nome: 'Ácido pantotênico (B5)', u: 'mg' },
   { k: 'b6', nome: 'Vitamina B6', u: 'mg' },
   { k: 'b9', nome: 'Folato (B9)', u: 'µg' },
   { k: 'b12', nome: 'Vitamina B12', u: 'µg' },
+];
+
+// Gorduras essenciais e compostos ligados a desempenho e recuperação.
+// Podem vir da comida ou de suplemento (cápsula de ômega-3, creatina).
+export const OUTROS = [
+  { k: 'epadha', nome: 'Ômega-3 EPA + DHA', u: 'g', dica: 'de peixes ou suplemento' },
+  { k: 'ala', nome: 'Ômega-3 ALA', u: 'g', dica: 'de sementes e óleos vegetais' },
+  { k: 'colina', nome: 'Colina', u: 'mg' },
+  { k: 'creatina', nome: 'Creatina', u: 'g', dica: 'referência para quem treina' },
 ];
 
 // Referência da OMS (mg por kg de peso por dia).
@@ -51,7 +61,7 @@ export const AMINOACIDOS = [
 ];
 
 // Tudo o que entra na contagem "na meta" e nas sugestões (sódio é limite máximo).
-export const MICROS = [FIBRA, ...VITAMINAS, ...MINERAIS];
+export const MICROS = [FIBRA, ...VITAMINAS, ...MINERAIS, ...OUTROS];
 export const TODOS = [...MACROS, ...MICROS, ...AMINOACIDOS];
 export const CHAVES = TODOS.map((n) => n.k);
 
@@ -78,5 +88,10 @@ export const IDEIAS = {
   b6: 'frango, banana, batata',
   b9: 'folhas verdes, feijão, lentilha',
   b12: 'carne bovina, sardinha, ovos',
+  b5: 'ovos, frango, cogumelos, abacate',
+  epadha: 'sardinha, salmão ou cápsula de ômega-3',
+  ala: 'linhaça, chia, nozes',
+  colina: 'ovos, fígado, carnes',
+  creatina: 'carne vermelha, peixes ou creatina monoidratada',
   amino: 'carnes, peixes, ovos, whey',
 };

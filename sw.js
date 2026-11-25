@@ -1,7 +1,7 @@
 // Service worker: deixa o app abrir sem internet.
 // Estratégia: rede primeiro (pega sempre a versão nova) e, sem rede, usa o cache.
 // Ao mudar arquivos do app, aumente VERSAO.
-const VERSAO = 'alimentacao-v1';
+const VERSAO = 'alimentacao-v2';
 const ARQUIVOS = [
   './',
   'index.html',
