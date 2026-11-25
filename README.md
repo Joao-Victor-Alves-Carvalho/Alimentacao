@@ -20,7 +20,7 @@ essenciais**, com metas diferentes para **dia de treino** e **dia comum**.
 ## Instalar no celular
 
 O app fica publicado pelo GitHub Pages em
-`https://joao-victor-alves-carvalho.github.io/alimentacao/`.
+`https://joao-victor-alves-carvalho.github.io/Alimentacao/`.
 
 - **iPhone**: abra o link no **Safari** → botão Compartilhar → **Adicionar à
   Tela de Início**.
