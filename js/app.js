@@ -2,8 +2,12 @@
 import { MACROS, FIBRA, VITAMINAS, MINERAIS, OUTROS, AMINOACIDOS, TODOS, CEREBRO, CAFEINA } from './nutrientes.js';
 import {
   calcularMetas, somarDia, status, contarNaMeta, sugestoes, gramasDe, resumoDia,
-  metaAgua, avaliarCafeina, energiaInstavel, LIMITE_CAFEINA,
+  metaAgua, avaliarCafeina, energiaInstavel, LIMITE_CAFEINA, TREINOS, INTENSIDADES,
 } from './calculos.js';
+import {
+  CHECKIN, EXAMES, ultimoExame, exameBaixo, nutrientesPrioritarios, registrarPeso,
+  diasDesdeUltimoPeso, variacaoPeso, relatorioSemana,
+} from './bemestar.js';
 import { carregar, salvar, importar, chaveData, dataDeChave, somarDias, PERFIL_PADRAO } from './armazenamento.js';
 
 const DIAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -18,6 +22,7 @@ let padrao = [];
 const ui = {
   aba: 'hoje', hoje: chaveData(), dia: chaveData(),
   analiseAberta: false, confirmar: null, form: false, histN: 14, erro: null, aviso: null,
+  salvandoRefeicao: false,
 };
 
 // ---------- utilidades ----------
@@ -43,11 +48,15 @@ function garantirDia(chave) {
   return d;
 }
 function alimentoDoDia(dia, id) { return dia.base?.[id] ?? catalogo()[id]; }
+const metasDo = (dia) => calcularMetas(est.perfil, dia.tipo, dia.treino);
+const prioridade = () => nutrientesPrioritarios(est.exames ?? []);
 
 function nomeMedida(a, q) { return q === 1 ? a.medida.nome : a.medida.plural; }
 function qtdTxt(a, q) {
   const nome = a.nome.charAt(0).toLowerCase() + a.nome.slice(1);
   if (!a.medida) return `${fmt(q)} g de ${nome}`;
+  // Cápsulas e afins: o peso não diz nada, então não mostra os gramas.
+  if (a.medida.gramas < 1) return `${fmt(q)} ${nomeMedida(a, q)} de ${nome}`;
   return `${fmt(q)} ${nomeMedida(a, q)} de ${nome} (${fmt(gramasDe(a, q))} g)`;
 }
 function porcaoInfo(a) {
@@ -146,7 +155,7 @@ function cartaoCerebro(tot, metas) {
 
 function cartaoAgua(dia) {
   const ml = Number(dia.agua) || 0;
-  const meta = metaAgua(est.perfil, dia.tipo);
+  const meta = metaAgua(est.perfil, dia.tipo, dia.treino);
   return `<section class="cartao">
     <div class="cartao-topo"><strong>Água</strong><span class="nutri-valor">${fmt(ml / 1000)} / ${fmt(meta / 1000)} L</span></div>
     <div class="barra"><span class="b-${status(ml, meta)}" style="width:${pct(ml, meta)}%"></span></div>
@@ -175,10 +184,180 @@ function cartaoCafeina(dia) {
   </section>`;
 }
 
+// ---------- bem-estar: treino, check-in, peso, refeições, relatório, exames ----------
+function cartaoTreino(dia, metas) {
+  if (dia.tipo !== 'treino') return '';
+  const t = dia.treino ?? {};
+  const min = Number(t.minutos) || 0;
+  return `<section class="cartao">
+    <div class="cartao-topo"><strong>Treino</strong>
+      <span class="suave">${min ? `+${fmt(metas.exercicio)} kcal de exercício` : 'sem detalhes: acréscimo padrão'}</span></div>
+    <div class="pills" role="group" aria-label="Modalidade">${TREINOS.map((x) => `<button class="pill" data-acao="treino" data-k="modalidade" data-v="${x.id}" aria-pressed="${(t.modalidade ?? 'musculacao') === x.id}">${x.nome}</button>`).join('')}</div>
+    <div class="perfil-linha"><span>Duração</span><div class="stepper">
+      <button class="passo" data-acao="treino-min" data-d="-10" aria-label="Menos 10 minutos">−</button>
+      <label class="qtd qtd-perfil"><input type="text" inputmode="numeric" value="${min}" data-treino-min aria-label="Duração do treino em minutos"><span class="qtd-un">min</span></label>
+      <button class="passo" data-acao="treino-min" data-d="10" aria-label="Mais 10 minutos">+</button></div></div>
+    <div class="pills" role="group" aria-label="Intensidade">${INTENSIDADES.map(([v, n]) => `<button class="pill" data-acao="treino" data-k="intensidade" data-v="${v}" aria-pressed="${(t.intensidade ?? 'moderada') === v}">${n}</button>`).join('')}</div>
+  </section>`;
+}
+
+function cartaoCheckin(dia) {
+  const c = dia.checkin ?? {};
+  const escala = (x) => `<div class="checkin-linha"><span>${x.nome}</span><div class="escala" role="group" aria-label="${x.nome}">
+    ${[1, 2, 3, 4, 5].map((v) => `<button data-acao="checkin" data-k="${x.k}" data-v="${v}" aria-pressed="${c[x.k] === v}">${v}</button>`).join('')}</div></div>`;
+  return `<section class="cartao">
+    <div class="cartao-topo"><strong>Check-in do dia</strong><span class="suave">1 = ruim · 5 = ótimo</span></div>
+    <div class="perfil-linha"><span>Horas de sono</span><div class="stepper">
+      <button class="passo" data-acao="sono" data-d="-0.5" aria-label="Menos meia hora de sono">−</button>
+      <label class="qtd qtd-perfil"><input type="text" inputmode="decimal" value="${c.sono ? fmt(c.sono) : ''}" placeholder="—" data-sono aria-label="Horas de sono"><span class="qtd-un">horas</span></label>
+      <button class="passo" data-acao="sono" data-d="0.5" aria-label="Mais meia hora de sono">+</button></div></div>
+    ${CHECKIN.map(escala).join('')}
+  </section>`;
+}
+
+function campoPeso() {
+  return `<div class="acoes"><label class="campo campo-inline"><input type="text" inputmode="decimal" id="peso-hoje" placeholder="${fmt(est.perfil.peso)}" aria-label="Peso de hoje em kg"></label>
+    <span>kg</span><button class="btn btn-primario" data-acao="registrar-peso">Registrar</button></div>`;
+}
+
+function faixaPeso() {
+  if (ui.dia !== ui.hoje) return '';
+  const n = diasDesdeUltimoPeso(est.pesos ?? [], ui.hoje);
+  if (n < 7) return '';
+  return `<section class="faixa faixa-info"><strong>${Number.isFinite(n) ? `Pesagem da semana (a última foi há ${n} dias)` : 'Registre seu peso'}</strong>
+    <span>Com o peso atualizado, as metas se ajustam sozinhas.</span>${campoPeso()}</section>`;
+}
+
+function blocoRefeicoes(dia) {
+  const refs = est.refeicoes ?? [];
+  const ids = Object.keys(dia.itens ?? {});
+  const cat = catalogo();
+  let corpo = '';
+  if (ui.salvandoRefeicao) {
+    corpo = `<form class="cartao form" id="form-refeicao">
+      <label class="campo"><span>Nome da refeição</span><input type="text" name="nome" required placeholder="Ex.: Café da manhã"></label>
+      <span class="suave">Itens marcados hoje (desmarque o que não faz parte):</span>
+      ${ids.map((id) => { const a = alimentoDoDia(dia, id) ?? cat[id]; return a ? `<label class="check"><input type="checkbox" name="item" value="${esc(id)}" checked> ${esc(qtdTxt(a, Number(dia.itens[id])))}</label>` : ''; }).join('')}
+      <div class="acoes"><button type="button" class="btn btn-contorno" data-acao="refeicao-cancelar">Cancelar</button>
+        <button type="submit" class="btn btn-primario">Salvar refeição</button></div></form>`;
+  } else if (ids.length) {
+    corpo = '<button class="btn btn-contorno" data-acao="refeicao-salvar">Salvar o que marquei como refeição</button>';
+  }
+  return `<div class="titulo-secao"><h2>Refeições salvas</h2><span class="suave">um toque marca tudo</span></div>
+    ${refs.length ? `<div class="pills">${refs.map((r) => `<button class="pill" data-acao="usar-refeicao" data-id="${esc(r.id)}">+ ${esc(r.nome)}</button>`).join('')}</div>`
+      : '<p class="suave">Marque o que comeu numa refeição e salve para repetir com um toque.</p>'}
+    ${corpo}`;
+}
+
+function textoAjuste(a, r) {
+  const pctTxt = (v) => `${Math.round(v * 100)}%`;
+  switch (a.tipo) {
+    case 'sono': return `Você dormiu em média ${fmt(a.valor)} h. Sono abaixo de 7 h pesa mais no foco do que qualquer alimento: tente deitar 30 min mais cedo.`;
+    case 'proteina': return `A proteína ficou em ${pctTxt(a.valor)} da meta, na média. Coloque uma fonte de proteína em cada refeição (ovos, frango, whey, iogurte).`;
+    case 'agua': return `A água ficou em ${pctTxt(a.valor)} da meta. Deixe uma garrafa de 500 ml por perto e encha de 5 a 6 vezes ao dia.`;
+    case 'cafeina': return `Teve cafeína depois das ${a.ate}h em ${a.valor} dias. Tente tomar o último café antes das ${a.ate}h para dormir melhor.`;
+    case 'energia': return `Em ${a.valor} dias a energia ficou instável (muito açúcar, pouca fibra e proteína). Junte proteína ou fibra quando comer doce.`;
+    default: {
+      const c = a.cronico;
+      const base = `${c.nome} ficou abaixo da meta em ${c.dias} de ${r.diasRegistrados} dias${c.exame ? ', e seu exame também deu baixo' : ''}.`;
+      if (!a.sugestao) return `${base} Nenhum alimento do cardápio cobre bem: peça à Claude para cadastrar ${a.ideia}.`;
+      return `${base} Inclua ${qtdTxt(a.sugestao.alimento, a.sugestao.qtd)} por dia${a.sugestao.parcial ? ` (ajuda, mas não fecha; considere ${a.ideia})` : ''}.`;
+    }
+  }
+}
+
+function cartaoRelatorio() {
+  const r = relatorioSemana({
+    dias: est.dias, catalogo: catalogo(), perfil: est.perfil, alimentos: ativos(),
+    exames: est.exames ?? [], pesos: est.pesos ?? [], hoje: ui.hoje,
+  });
+  if (!r.diasRegistrados && !r.diasCheckin) {
+    return `<section class="cartao"><h2>Relatório da semana</h2><p class="suave">Registre alguns dias para ver aqui o resumo dos últimos 7 dias.</p></section>`;
+  }
+  const p = (v) => (v === null ? '—' : `${Math.round(v * 100)}%`);
+  const n = (v) => (v === null ? '—' : fmt(v));
+  const stat = (rot, val) => `<div class="stat"><span class="stat-val">${val}</span><span class="suave">${rot}</span></div>`;
+  const ck = r.checkin;
+  const peso = r.pesoVariacao === null ? '—' : `${r.pesoVariacao > 0 ? '+' : ''}${fmt(r.pesoVariacao)} kg`;
+  return `<section class="cartao">
+    <div class="cartao-topo"><h2>Relatório da semana</h2><span class="suave">${r.diasRegistrados} de 7 dias registrados</span></div>
+    <div class="stats">
+      ${stat('Calorias', p(r.kcal))}${stat('Proteína', p(r.prot))}${stat('Água', p(r.agua))}
+      ${stat('Sono', ck.sono === null ? '—' : `${n(ck.sono)} h`)}${stat('Energia', n(ck.energia))}${stat('Foco', n(ck.foco))}
+      ${stat('Humor', n(ck.humor))}${stat('Treinos', `${r.treinos}${r.minutosTreino ? ` · ${r.minutosTreino} min` : ''}`)}${stat('Peso (7 dias)', peso)}
+    </div>
+    ${r.cronicos.length ? `<div><strong>Abaixo da meta na maior parte da semana</strong>
+      <div class="pills pills-info">${r.cronicos.slice(0, 8).map((c) => `<span class="tag ${c.exame || c.cerebro ? 'tag-cerebro' : ''}">${c.nome} · ${c.dias}/${r.diasRegistrados}</span>`).join('')}</div></div>` : ''}
+    ${r.ajustes.length ? `<div class="ajustes"><strong>Ajustes para a próxima semana</strong>
+      <ol>${r.ajustes.map((a) => `<li>${esc(textoAjuste(a, r))}</li>`).join('')}</ol></div>`
+      : '<p class="st-ok">Semana sem ajustes importantes. Continue assim.</p>'}
+  </section>`;
+}
+
+function graficoPeso(pesos) {
+  const ult = pesos.slice(-12);
+  if (ult.length < 2) return '';
+  const W = 300, H = 110, pad = 14;
+  const kgs = ult.map((x) => x.kg);
+  const min = Math.min(...kgs) - 0.5, max = Math.max(...kgs) + 0.5;
+  const x = (i) => pad + (i * (W - 2 * pad)) / (ult.length - 1);
+  const y = (kg) => H - pad - ((kg - min) / (max - min)) * (H - 2 * pad);
+  const pts = ult.map((v, i) => `${x(i).toFixed(1)},${y(v.kg).toFixed(1)}`).join(' ');
+  return `<svg class="grafico-peso" viewBox="0 0 ${W} ${H}" role="img" aria-label="Peso nos últimos registros, de ${fmt(ult[0].kg)} a ${fmt(ult.at(-1).kg)} kg">
+    <polyline points="${pts}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    ${ult.map((v, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(v.kg).toFixed(1)}" r="3.5" fill="currentColor"/>`).join('')}
+  </svg>
+  <div class="grafico-peso-rotulos"><span>${dataCurta(ult[0].data)} · ${fmt(ult[0].kg)} kg</span><span>${dataCurta(ult.at(-1).data)} · ${fmt(ult.at(-1).kg)} kg</span></div>`;
+}
+
+function cartaoPeso() {
+  const pesos = est.pesos ?? [];
+  const ult = pesos.at(-1);
+  const v7 = variacaoPeso(pesos, 7), v30 = variacaoPeso(pesos, 30);
+  const sinal = (v) => (v === null ? '—' : `${v > 0 ? '+' : ''}${fmt(v)} kg`);
+  return `<section class="cartao">
+    <div class="cartao-topo"><h2>Peso</h2><span class="suave">${ult ? `${fmt(ult.kg)} kg em ${dataCurta(ult.data)}` : 'sem registros'}</span></div>
+    ${graficoPeso(pesos)}
+    ${pesos.length >= 2 ? `<div class="stats stats-2">
+      <div class="stat"><span class="stat-val">${sinal(v7)}</span><span class="suave">em 7 dias</span></div>
+      <div class="stat"><span class="stat-val">${sinal(v30)}</span><span class="suave">em 30 dias</span></div></div>` : ''}
+    <span class="suave">Pese-se uma vez por semana, de manhã, em jejum. As metas usam o peso mais recente.</span>
+    ${campoPeso()}
+  </section>`;
+}
+
+function cartaoExames() {
+  const ex = est.exames ?? [];
+  const hoje = ui.hoje;
+  const linhas = EXAMES.map((d) => {
+    const u = ultimoExame(ex, d.k);
+    const st = u ? (exameBaixo(u) ? 'baixo' : 'ok') : null;
+    return `<div class="exame-linha">
+      <div class="item-txt"><strong>${d.nome}</strong><span class="suave">Referência: ${d.ref} ${d.u}</span></div>
+      <div class="exame-valor">${u ? `<span>${fmt(u.valor)} ${d.u} <span class="st st-${st}">${st === 'baixo' ? 'baixo' : 'ok'}</span></span>
+        <span class="suave">${u.data.split('-').reverse().join('/')}</span>
+        <button class="btn btn-texto-perigo btn-mini" data-acao="exame-apagar" data-k="${d.k}" data-data="${u.data}" aria-label="Apagar este resultado de ${d.nome}">apagar</button>`
+        : '<span class="suave">—</span>'}</div></div>`;
+  }).join('');
+  return `<section class="cartao">
+    <h2>Exames de sangue</h2>
+    <p class="suave">Exame abaixo da referência vira prioridade nas sugestões de alimentos. As referências variam por laboratório; confirme com seu médico.</p>
+    ${linhas}
+    <form class="form" id="form-exame">
+      <div class="grade-2">
+        <label class="campo"><span>Exame</span><select name="k">${EXAMES.map((d) => `<option value="${d.k}">${d.nome}</option>`).join('')}</select></label>
+        <label class="campo"><span>Resultado</span><input type="text" inputmode="decimal" name="valor" required placeholder="Ex.: 28"></label>
+      </div>
+      <label class="campo"><span>Data do exame</span><input type="date" name="data" value="${hoje}" max="${hoje}" required></label>
+      <button type="submit" class="btn btn-primario">Salvar resultado</button>
+    </form>
+  </section>`;
+}
+
 // ---------- telas ----------
 function telaHoje() {
   const dia = diaDe(ui.dia);
-  const metas = calcularMetas(est.perfil, dia.tipo);
+  const metas = metasDo(dia);
   const tot = somarDia(dia, catalogo());
   const c = contarNaMeta(tot, metas);
   const sodio = status(tot.na, metas.na, true) === 'ok' ? 'dentro do limite' : 'acima do limite';
@@ -207,10 +386,12 @@ function telaHoje() {
     ${cabecalhoDia()}
     ${!est.perfilDefinido ? `<section class="faixa faixa-info"><span>As metas usam dados de exemplo. Coloque seu peso, altura e idade no Perfil.</span>
       <button class="btn btn-contorno" data-acao="aba" data-aba="perfil">Abrir perfil</button></section>` : ''}
+    ${faixaPeso()}
     <div class="seg" role="group" aria-label="Tipo de dia">
       <button data-acao="tipo" data-tipo="treino" aria-pressed="${dia.tipo === 'treino'}">Dia de treino</button>
       <button data-acao="tipo" data-tipo="comum" aria-pressed="${dia.tipo === 'comum'}">Dia comum</button>
     </div>
+    ${cartaoTreino(dia, metas)}
     <section class="cartao">
       <div class="kcal-topo"><div><span class="suave">Calorias</span>
         <div class="kcal-num">${fmt(tot.kcal)} <span>/ ${fmt(metas.kcal)} kcal</span></div></div>
@@ -224,12 +405,14 @@ function telaHoje() {
     ${cartaoCerebro(tot, metas)}
     ${cartaoAgua(dia)}
     ${cartaoCafeina(dia)}
+    ${cartaoCheckin(dia)}
     <button class="cartao cartao-link" data-acao="aba" data-aba="analise">
       <span class="cartao-link-txt"><strong>Micronutrientes e aminoácidos</strong>
         <span class="suave">Vitaminas, minerais, ômega-3 e outros: ${c.micros} de ${c.microsTotal} na meta · sódio ${sodio}</span>
         <span class="suave">Aminoácidos essenciais: ${c.aminos} de ${c.aminosTotal} na meta</span></span>
       <span class="acento">Ver tudo ${icone(ICONES.dir, 18)}</span>
     </button>
+    ${blocoRefeicoes(dia)}
     <div class="titulo-secao"><h2>O que comi</h2><span class="suave">toque em + ou digite</span></div>
     <div class="lista">${linhas || '<p class="vazio">Sua lista rápida está vazia. Coloque alimentos nela pela aba Alimentos.</p>'}</div>
     <button class="btn btn-contorno btn-largo" data-acao="alternar-analise" aria-expanded="${ui.analiseAberta}">
@@ -241,9 +424,11 @@ function telaHoje() {
 
 function telaAnalise() {
   const dia = diaDe(ui.dia);
-  const metas = calcularMetas(est.perfil, dia.tipo);
+  const metas = metasDo(dia);
   const tot = somarDia(dia, catalogo());
-  const { lista, plano } = sugestoes(tot, metas, ativos());
+  const prio = prioridade();
+  const { lista, plano } = sugestoes(tot, metas, ativos(), prio);
+  const nomesPrio = TODOS.filter((n) => prio.includes(n.k)).map((n) => n.nome);
   const baixos = lista.filter(({ alvo }) => status(tot[alvo.k], metas[alvo.k]) === 'baixo').map(({ alvo }) => alvo.nome);
   const cat = catalogo();
 
@@ -262,7 +447,7 @@ function telaAnalise() {
   }).join('');
 
   const sugHtml = lista.map(({ alvo, sugestao: s }) => `<div class="sug">
-      <div class="sug-topo"><strong>${alvo.nome}${alvo.cerebro ? ' <span class="tag tag-cerebro">cérebro</span>' : ''}</strong><span class="st-baixo">faltam ${fmt(alvo.falta)} ${alvo.u}</span></div>
+      <div class="sug-topo"><strong>${alvo.nome}${alvo.exame ? ' <span class="tag tag-exame">exame</span>' : ''}${alvo.cerebro ? ' <span class="tag tag-cerebro">cérebro</span>' : ''}</strong><span class="st-baixo">faltam ${fmt(alvo.falta)} ${alvo.u}</span></div>
       ${s ? `<span>Coma ${esc(qtdTxt(s.alimento, s.qtd))}</span>
         <span class="suave">dá ${fmt(s.fornece)} ${alvo.u}${s.parcial ? ', cobre só uma parte' : ' e fecha a meta'}</span>
         ${s.parcial ? `<span class="suave">Para cobrir melhor, peça à Claude para cadastrar: ${alvo.ideia}.</span>` : ''}`
@@ -276,6 +461,7 @@ function telaAnalise() {
       <span><i class="b-ok"></i>Na meta (90%+)</span><span><i class="b-perto"></i>Perto (50–89%)</span>
       <span><i class="b-baixo"></i>Baixo</span><span><i class="b-acima"></i>Acima do limite</span></div>
     ${avisoEnergia(tot)}
+    ${nomesPrio.length ? `<section class="faixa faixa-info"><strong>Seus exames mostram baixo</strong><span>${nomesPrio.join(', ')}. Esses vêm primeiro nas sugestões.</span></section>` : ''}
     ${baixos.length ? `<section class="faixa faixa-alerta"><strong>Ainda baixo</strong><span>${baixos.join(', ')}</span></section>` : ''}
     ${!lista.length ? `<section class="faixa faixa-ok"><strong>Todos os micronutrientes, ômega-3 e aminoácidos estão na meta.</strong></section>` : `
     <section class="cartao">
@@ -298,7 +484,7 @@ function telaHistorico() {
   const resumo = (chave) => {
     const d = est.dias[chave];
     if (!d || (!Object.keys(d.itens ?? {}).length && !d.agua)) return null;
-    return { ...resumoDia(d, cat, est.perfil), agua: (Number(d.agua) || 0) / metaAgua(est.perfil, d.tipo) };
+    return { ...resumoDia(d, cat, est.perfil), agua: (Number(d.agua) || 0) / metaAgua(est.perfil, d.tipo, d.treino) };
   };
   const semana = [];
   for (let i = 6; i >= 0; i--) {
@@ -315,18 +501,28 @@ function telaHistorico() {
     const k = somarDias(ui.hoje, -i);
     const r = resumo(k);
     const tipo = est.dias[k]?.tipo;
+    const ck = est.dias[k]?.checkin ?? {};
+    const tr = est.dias[k]?.treino;
+    const extras = [
+      ck.sono ? `Sono ${fmt(ck.sono)} h` : '',
+      ck.energia ? `Energia ${ck.energia}` : '', ck.foco ? `Foco ${ck.foco}` : '', ck.humor ? `Humor ${ck.humor}` : '',
+      tipo === 'treino' && tr?.minutos ? `${TREINOS.find((x) => x.id === tr.modalidade)?.nome ?? 'Treino'} ${tr.minutos} min` : '',
+    ].filter(Boolean).join(' · ');
     dias.push(`<button class="cartao dia" data-acao="abrir-dia" data-dia="${k}">
       <span class="dia-topo"><strong>${i === 0 ? 'Hoje' : i === 1 ? 'Ontem' : dataCurta(k)}</strong>
         ${r ? `<span class="tag ${tipo === 'treino' ? 'tag-treino' : ''}">${tipo === 'treino' ? 'Treino' : 'Comum'}</span>` : ''}
         ${icone(ICONES.dir, 18)}</span>
       ${r ? `<span class="dia-barras">${barra(r.kcal, 'Calorias')}${barra(r.prot, 'Proteína')}${barra(r.micros / r.microsTotal, 'Micros')}${barra(r.agua, 'Água')}</span>`
         : '<span class="suave">Sem registro. Toque para preencher.</span>'}
+      ${extras ? `<span class="suave">${extras}</span>` : ''}
     </button>`);
   }
 
   return `<div class="tela">
     <div><p class="rotulo">Histórico</p><h1>Como foram os dias</h1>
       <p class="suave">Toque num dia para ver o que comeu e corrigir o que faltou registrar.</p></div>
+    ${cartaoRelatorio()}
+    ${cartaoPeso()}
     <section class="cartao">
       <div class="cartao-topo"><h2>Proteína, % da meta</h2><span class="suave">média ${media}</span></div>
       <div class="grafico">
@@ -397,6 +593,15 @@ function telaAlimentos() {
       ${ui.form ? '' : '<button class="btn btn-contorno" data-acao="form-abrir">+ Cadastrar manualmente</button>'}
     </section>
     ${ui.form ? formulario() : ''}
+    ${(est.refeicoes ?? []).length ? `<section class="cartao"><h2>Refeições salvas</h2>
+      ${est.refeicoes.map((r) => {
+        const cat = catalogo();
+        const itens = Object.entries(r.itens).map(([id, q]) => (cat[id] ? qtdTxt(cat[id], q) : null)).filter(Boolean).join(', ');
+        return `<div class="refeicao"><div class="item-txt"><strong>${esc(r.nome)}</strong><span class="suave">${esc(itens)}</span></div>
+          ${ui.confirmar === 'ref:' + r.id ? `<div class="acoes"><button class="btn btn-contorno" data-acao="cancelar">Cancelar</button>
+            <button class="btn btn-perigo" data-acao="refeicao-apagar" data-id="${esc(r.id)}">Apagar</button></div>`
+            : `<button class="btn btn-texto-perigo" data-acao="pedir-apagar" data-id="ref:${esc(r.id)}">Apagar</button>`}</div>`;
+      }).join('')}</section>` : ''}
     <div class="lista">${lista}</div>
     ${temPadraoRemovido ? '<button class="btn btn-contorno btn-largo" data-acao="restaurar">Restaurar alimentos padrão apagados</button>' : ''}
   </div>`;
@@ -411,6 +616,7 @@ function telaPerfil() {
   const escolha = (rot, k, ops) => `<div class="perfil-bloco" role="group" aria-label="${rot}"><span>${rot}</span><div class="pills">
       ${ops.map(([v, n]) => `<button class="pill" data-acao="perfil-opcao" data-k="${k}" data-v="${v}" aria-pressed="${(P[k] ?? PERFIL_PADRAO[k]) === v}">${n}</button>`).join('')}</div></div>`;
   const mT = calcularMetas(P, 'treino'), mC = calcularMetas(P, 'comum');
+  // (no dia de treino com detalhes, a meta real soma o gasto do exercício registrado)
   const meta = (nome, m) => `<div class="meta-box"><span class="acento"><strong>${nome}</strong></span><span class="meta-kcal">${fmt(m.kcal)} kcal</span>
       <span>Proteína ${fmt(m.prot)} g</span><span>Carboidratos ${fmt(m.carb)} g</span><span>Gorduras ${fmt(m.gord)} g</span></div>`;
 
@@ -427,8 +633,9 @@ function telaPerfil() {
     <section class="cartao">
       <div class="cartao-topo"><h2>Metas calculadas</h2><span class="suave">gasto basal ${fmt(mT.tmb)} kcal</span></div>
       <div class="grade-2">${meta('Dia de treino', mT)}${meta('Dia comum', mC)}</div>
-      <p class="suave">Gasto basal pela fórmula de Mifflin-St Jeor; no dia de treino o fator de atividade sobe. Proteína de 2,0 g/kg no treino e 1,8 g/kg no dia comum, gordura de 0,9 g/kg e o restante em carboidrato.</p>
+      <p class="suave">Gasto basal pela fórmula de Mifflin-St Jeor. No dia de treino, se você informar modalidade, duração e intensidade, a meta soma o gasto estimado do exercício; sem detalhes, usa o acréscimo padrão mostrado aqui. Proteína de 2,0 g/kg no treino e 1,8 g/kg no dia comum, gordura de 0,9 g/kg e o restante em carboidrato.</p>
     </section>
+    ${cartaoExames()}
     <section class="cartao">
       <h2>Aparência</h2>
       <div class="pills" role="group" aria-label="Tema">
@@ -467,7 +674,7 @@ function aplicarTema() {
 }
 
 // ---------- ações ----------
-function setQtd(id, qtd) {
+function aplicarQtd(id, qtd) {
   const d = garantirDia(ui.dia);
   const q = Math.max(0, Math.round(qtd * 100) / 100);
   if (q > 0) {
@@ -477,11 +684,21 @@ function setQtd(id, qtd) {
     delete d.itens[id];
     delete d.base[id];
   }
+}
+function setQtd(id, qtd) {
+  aplicarQtd(id, qtd);
   persistir();
   render();
 }
 function passoDe(id) { const a = alimentoDoDia(diaDe(ui.dia), id); return a?.medida ? 1 : 10; }
-function setPerfil(k, v) { est.perfil = { ...est.perfil, [k]: v }; est.perfilDefinido = true; persistir(); render(); }
+function setPerfil(k, v) {
+  est.perfil = { ...est.perfil, [k]: v };
+  est.perfilDefinido = true;
+  // Mudar o peso no perfil também registra a pesagem de hoje.
+  if (k === 'peso' && v > 0) est.pesos = registrarPeso(est.pesos ?? [], ui.hoje, v);
+  persistir();
+  render();
+}
 
 const PASSO_PERFIL = { peso: 1, altura: 1, idade: 1 };
 const ACOES = {
@@ -516,6 +733,58 @@ const ACOES = {
   'perfil-opcao': (el) => { const v = el.dataset.v; setPerfil(el.dataset.k, /^\d+$/.test(v) ? Number(v) : v); },
   tema: (el) => { est.tema = el.dataset.v; persistir(); aplicarTema(); },
   'mais-dias': () => { ui.histN += 14; },
+  treino: (el) => {
+    const d = garantirDia(ui.dia);
+    d.treino = { modalidade: 'musculacao', intensidade: 'moderada', ...d.treino, [el.dataset.k]: el.dataset.v };
+    persistir();
+  },
+  'treino-min': (el) => {
+    const d = garantirDia(ui.dia);
+    const min = Math.max(0, (Number(d.treino?.minutos) || 0) + Number(el.dataset.d));
+    d.treino = { modalidade: 'musculacao', intensidade: 'moderada', ...d.treino, minutos: min };
+    persistir();
+  },
+  checkin: (el) => {
+    const d = garantirDia(ui.dia);
+    const v = Number(el.dataset.v);
+    d.checkin = { ...d.checkin };
+    // Tocar de novo na mesma nota apaga a nota.
+    if (d.checkin[el.dataset.k] === v) delete d.checkin[el.dataset.k]; else d.checkin[el.dataset.k] = v;
+    persistir();
+  },
+  sono: (el) => {
+    const d = garantirDia(ui.dia);
+    const atual = Number(d.checkin?.sono);
+    const novo = atual ? Math.min(14, Math.max(0, atual + Number(el.dataset.d))) : 7;
+    d.checkin = { ...d.checkin, sono: novo };
+    persistir();
+  },
+  'registrar-peso': () => {
+    const kg = num(document.getElementById('peso-hoje')?.value);
+    if (kg < 20 || kg > 400) { ui.aviso = 'Digite o peso em kg, por exemplo 80,5.'; return; }
+    est.pesos = registrarPeso(est.pesos ?? [], ui.hoje, kg);
+    est.perfil = { ...est.perfil, peso: kg };
+    est.perfilDefinido = true;
+    persistir();
+  },
+  'refeicao-salvar': () => { ui.salvandoRefeicao = true; },
+  'refeicao-cancelar': () => { ui.salvandoRefeicao = false; },
+  'usar-refeicao': (el) => {
+    const r = (est.refeicoes ?? []).find((x) => x.id === el.dataset.id);
+    if (!r) return;
+    const d = diaDe(ui.dia);
+    for (const [id, q] of Object.entries(r.itens)) aplicarQtd(id, (Number(d.itens?.[id]) || 0) + Number(q));
+    persistir();
+  },
+  'refeicao-apagar': (el) => {
+    est.refeicoes = (est.refeicoes ?? []).filter((r) => r.id !== el.dataset.id);
+    ui.confirmar = null;
+    persistir();
+  },
+  'exame-apagar': (el) => {
+    est.exames = (est.exames ?? []).filter((e) => !(e.k === el.dataset.k && e.data === el.dataset.data));
+    persistir();
+  },
   agua: (el) => {
     const d = garantirDia(ui.dia);
     d.agua = Math.max(0, (Number(d.agua) || 0) + Number(el.dataset.ml));
@@ -561,6 +830,17 @@ document.addEventListener('change', async (e) => {
   const el = e.target;
   if (el.matches('[data-qtd]')) setQtd(el.dataset.qtd, num(el.value));
   else if (el.matches('[data-perfil]')) setPerfil(el.dataset.perfil, num(el.value) || PERFIL_PADRAO[el.dataset.perfil]);
+  else if (el.matches('[data-treino-min]')) {
+    const d = garantirDia(ui.dia);
+    d.treino = { modalidade: 'musculacao', intensidade: 'moderada', ...d.treino, minutos: Math.round(num(el.value)) };
+    persistir(); render();
+  } else if (el.matches('[data-sono]')) {
+    const d = garantirDia(ui.dia);
+    const h = Math.min(14, num(el.value));
+    d.checkin = { ...d.checkin };
+    if (h > 0) d.checkin.sono = h; else delete d.checkin.sono;
+    persistir(); render();
+  }
   else if (el.id === 'arquivo-backup' && el.files?.[0]) {
     try {
       const novo = importar(await el.files[0].text());
@@ -572,10 +852,35 @@ document.addEventListener('change', async (e) => {
 
 // Enter no campo de quantidade confirma e fecha o teclado.
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && e.target.matches('[data-qtd], [data-perfil]')) e.target.blur();
+  if (e.key === 'Enter' && e.target.matches('[data-qtd], [data-perfil], [data-treino-min], [data-sono]')) e.target.blur();
+  if (e.key === 'Enter' && e.target.id === 'peso-hoje') { e.preventDefault(); ACOES['registrar-peso'](); render(); }
 });
 
 document.addEventListener('submit', (e) => {
+  if (e.target.id === 'form-refeicao') {
+    e.preventDefault();
+    const f = new FormData(e.target);
+    const nome = String(f.get('nome') || '').trim();
+    const dia = diaDe(ui.dia);
+    const itens = {};
+    for (const id of f.getAll('item')) if (dia.itens?.[id]) itens[id] = dia.itens[id];
+    if (!nome || !Object.keys(itens).length) return;
+    (est.refeicoes ??= []).push({ id: `ref-${Date.now()}`, nome, itens });
+    ui.salvandoRefeicao = false;
+    persistir(); render();
+    return;
+  }
+  if (e.target.id === 'form-exame') {
+    e.preventDefault();
+    const f = new FormData(e.target);
+    const k = String(f.get('k'));
+    const valor = num(f.get('valor'));
+    const data = String(f.get('data') || ui.hoje);
+    if (!EXAMES.some((x) => x.k === k) || !(valor > 0)) return;
+    est.exames = [...(est.exames ?? []).filter((x) => !(x.k === k && x.data === data)), { k, valor, data }];
+    persistir(); render();
+    return;
+  }
   if (e.target.id !== 'form-alimento') return;
   e.preventDefault();
   const f = new FormData(e.target);

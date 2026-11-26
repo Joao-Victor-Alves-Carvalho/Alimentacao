@@ -12,10 +12,13 @@ export function estadoVazio() {
     perfil: { ...PERFIL_PADRAO },
     perfilDefinido: false,
     tema: 'sistema', // 'claro' | 'escuro' | 'sistema'
-    dias: {}, // 'AAAA-MM-DD' -> { tipo, itens: {id: qtd}, base: {id: alimento}, agua: ml, cafeina: [{id, mg, hora}] }
+    dias: {}, // 'AAAA-MM-DD' -> { tipo, itens, base, agua, cafeina, checkin: {sono, qualidade, energia, foco, humor}, treino: {modalidade, minutos, intensidade} }
     meus: [], // alimentos cadastrados no próprio app
     removidos: [], // ids de alimentos apagados do cardápio
     lista: {}, // id -> true/false (sobrescreve o padrão da lista rápida)
+    refeicoes: [], // [{ id, nome, itens: {id: qtd} }]
+    pesos: [], // [{ data, kg }]
+    exames: [], // [{ k, valor, data }]
   };
 }
 
