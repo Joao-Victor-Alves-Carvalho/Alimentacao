@@ -1,5 +1,5 @@
 {
-  "versao": 4,
+  "versao": 5,
   "observacao": "Valores por 100 g (ou 100 ml), aproximados a partir da TACO (Unicamp) e da USDA FoodData Central. Suplementos (whey, ômega-3, creatina, vitamina D) variam por marca: confira o rótulo.",
   "alimentos": [
     {"id": "ovo", "nome": "Ovo cozido", "medida": {"nome": "unid.", "plural": "unid.", "gramas": 50}, "lista": true,
@@ -89,6 +89,8 @@
     {"id": "uva", "nome": "Uva sem semente", "medida": null, "lista": true,
       "n": {"kcal": 69, "prot": 0.7, "carb": 18.1, "acucar": 15.5, "gord": 0.2, "fibra": 0.9, "ca": 10, "fe": 0.36, "mg": 7, "fosf": 20, "k": 191, "na": 2, "zn": 0.07, "cu": 0.13, "mn": 0.07, "se": 0.1, "vitA": 3, "vitC": 3.2, "vitD": 0, "vitE": 0.19, "vitK": 14.6, "b1": 0.07, "b2": 0.07, "b3": 0.19, "b5": 0.05, "b6": 0.09, "b9": 2, "b12": 0, "his": 0.02, "ile": 0.01, "leu": 0.02, "lys": 0.03, "metcys": 0.02, "phetyr": 0.03, "thr": 0.02, "trp": 0.01, "val": 0.02, "epadha": 0, "ala": 0.01, "colina": 5.6, "creatina": 0}},
     {"id": "pts", "nome": "Proteína texturizada de soja (peso seco)", "medida": null, "lista": true,
-      "n": {"kcal": 334, "prot": 52, "carb": 30, "acucar": 7, "gord": 1.2, "fibra": 17, "ca": 240, "fe": 9.2, "mg": 290, "fosf": 674, "k": 2384, "na": 20, "zn": 2.5, "cu": 4.07, "mn": 3.0, "se": 1.7, "vitA": 2, "vitC": 0, "vitD": 0, "vitE": 0.12, "vitK": 4, "b1": 0.7, "b2": 0.25, "b3": 2.6, "b5": 2.0, "b6": 0.57, "b9": 305, "b12": 0, "his": 1.27, "ile": 2.28, "leu": 3.83, "lys": 3.13, "metcys": 1.34, "phetyr": 4.25, "thr": 2.0, "trp": 0.67, "val": 2.35, "epadha": 0, "ala": 0.1, "colina": 190, "creatina": 0}}
+      "n": {"kcal": 334, "prot": 52, "carb": 30, "acucar": 7, "gord": 1.2, "fibra": 17, "ca": 240, "fe": 9.2, "mg": 290, "fosf": 674, "k": 2384, "na": 20, "zn": 2.5, "cu": 4.07, "mn": 3.0, "se": 1.7, "vitA": 2, "vitC": 0, "vitD": 0, "vitE": 0.12, "vitK": 4, "b1": 0.7, "b2": 0.25, "b3": 2.6, "b5": 2.0, "b6": 0.57, "b9": 305, "b12": 0, "his": 1.27, "ile": 2.28, "leu": 3.83, "lys": 3.13, "metcys": 1.34, "phetyr": 4.25, "thr": 2.0, "trp": 0.67, "val": 2.35, "epadha": 0, "ala": 0.1, "colina": 190, "creatina": 0}},
+    {"id": "bis-xtra", "nome": "Bis Xtra ao leite", "medida": {"nome": "unid.", "plural": "unid.", "gramas": 45}, "lista": true,
+      "n": {"kcal": 528, "prot": 6.2, "carb": 60, "acucar": 42, "gord": 29, "fibra": 2.2, "ca": 120, "fe": 1.8, "mg": 45, "fosf": 150, "k": 280, "na": 110, "zn": 0.9, "cu": 0.3, "mn": 0.3, "se": 3, "vitA": 30, "vitC": 0, "vitD": 0.2, "vitE": 0.8, "vitK": 4, "b1": 0.08, "b2": 0.25, "b3": 0.6, "b5": 0.5, "b6": 0.05, "b9": 10, "b12": 0.3, "his": 0.15, "ile": 0.25, "leu": 0.45, "lys": 0.3, "metcys": 0.2, "phetyr": 0.5, "thr": 0.22, "trp": 0.07, "val": 0.32, "epadha": 0, "ala": 0.05, "colina": 25, "creatina": 0}}
   ]
 }
