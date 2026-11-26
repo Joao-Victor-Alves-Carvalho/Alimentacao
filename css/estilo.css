@@ -229,7 +229,8 @@ details summary { cursor: pointer; color: var(--acento); font-size: 14px; font-w
 .tabela { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 6px; }
 .tabela td { padding: 5px 0; border-bottom: 1px solid var(--borda); }
 .tabela td:last-child { text-align: right; color: var(--suave-2); font-variant-numeric: tabular-nums; }
-.form .grade-2, .grade-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.form .grade-2, .grade-2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.campo input, .campo select { width: 100%; min-width: 0; }
 .campo { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--suave-2); }
 .campo input {
   min-height: 44px; border: 1px solid var(--borda-forte); border-radius: 10px; padding: 0 10px;
@@ -245,7 +246,7 @@ details summary { cursor: pointer; color: var(--acento); font-size: 14px; font-w
 
 /* Menu inferior */
 #nav {
-  position: fixed; left: 0; right: 0; bottom: 0;
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
   display: grid; grid-template-columns: repeat(5, 1fr);
   background: var(--cartao); border-top: 1px solid var(--borda);
   padding: 6px 4px calc(env(safe-area-inset-bottom) + 6px);
@@ -266,3 +267,33 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--acento); 
 .btn:disabled { opacity: 0.4; cursor: default; }
 .acoes-agua { display: grid; grid-template-columns: 52px 1fr 1fr; gap: 8px; }
 .acoes-agua .btn { padding: 0 8px; }
+
+/* Bem-estar */
+.checkin-linha { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 600; }
+.escala { display: grid; grid-template-columns: repeat(5, 40px); gap: 4px; }
+.escala button {
+  height: 40px; border-radius: 10px; border: 1px solid var(--borda-forte);
+  background: var(--cartao); font-weight: 700;
+}
+.escala button[aria-pressed="true"] { background: var(--acento); border-color: var(--acento); color: var(--acento-sobre); }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.stats-2 { grid-template-columns: repeat(2, 1fr); }
+.stat { background: var(--fundo); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 2px; }
+.stat-val { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.pills-info { margin-top: 6px; }
+.ajustes ol { margin: 6px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.grafico-peso { width: 100%; height: auto; color: var(--acento); }
+.grafico-peso-rotulos { display: flex; justify-content: space-between; font-size: 11px; color: var(--suave); }
+.campo-inline input { width: 96px; }
+.exame-linha { display: flex; justify-content: space-between; gap: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--borda); font-size: 14px; }
+.exame-valor { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: right; white-space: nowrap; }
+.btn-mini { min-height: 32px; padding: 0 4px; font-size: 12px; }
+.campo select {
+  min-height: 44px; border: 1px solid var(--borda-forte); border-radius: 10px; padding: 0 10px;
+  background: var(--fundo); color: var(--texto); font-size: 16px;
+}
+.tag-exame { font-size: 11px; padding: 2px 8px; margin-left: 4px; background: var(--alerta-fundo); color: var(--alerta-texto); vertical-align: middle; }
+.check { display: flex; align-items: center; gap: 10px; min-height: 40px; font-size: 14px; }
+.check input { width: 20px; height: 20px; accent-color: var(--acento); }
+.refeicao { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--borda); }
+.refeicao:last-child { border-bottom: 0; padding-bottom: 0; }

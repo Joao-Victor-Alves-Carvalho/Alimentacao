@@ -41,17 +41,42 @@ export function metasMicros({ sexo, idade }, kcal) {
   };
 }
 
-// Mifflin-St Jeor; no dia de treino o fator de atividade sobe.
-export function calcularMetas(perfil, tipo) {
+// ---------- treino ----------
+// MET (equivalente metabólico) por modalidade e intensidade (Compêndio de
+// Atividades Físicas, valores arredondados).
+export const TREINOS = [
+  { id: 'musculacao', nome: 'Musculação', met: { leve: 3.5, moderada: 5, intensa: 6 } },
+  { id: 'corrida', nome: 'Corrida', met: { leve: 7, moderada: 9.8, intensa: 11.5 } },
+  { id: 'bike', nome: 'Bicicleta', met: { leve: 5.5, moderada: 7.5, intensa: 10 } },
+  { id: 'natacao', nome: 'Natação', met: { leve: 6, moderada: 8, intensa: 10 } },
+  { id: 'esporte', nome: 'Futebol / esporte', met: { leve: 5, moderada: 7, intensa: 9 } },
+  { id: 'luta', nome: 'Luta / funcional', met: { leve: 5, moderada: 7, intensa: 9 } },
+  { id: 'caminhada', nome: 'Caminhada', met: { leve: 3, moderada: 3.8, intensa: 5 } },
+];
+export const INTENSIDADES = [['leve', 'Leve'], ['moderada', 'Moderada'], ['intensa', 'Intensa']];
+
+// Gasto extra do exercício (já descontando o repouso): (MET − 1) × peso × horas.
+export function kcalExercicio(perfil, treino) {
+  const min = Number(treino?.minutos) || 0;
+  if (min <= 0) return 0;
+  const t = TREINOS.find((x) => x.id === treino.modalidade) ?? TREINOS[0];
+  const met = t.met[treino.intensidade] ?? t.met.moderada;
+  return (met - 1) * perfil.peso * (min / 60);
+}
+
+// Mifflin-St Jeor. No dia de treino: com detalhes (modalidade, minutos,
+// intensidade) soma o gasto estimado do exercício; sem detalhes, sobe o fator.
+export function calcularMetas(perfil, tipo, treino = null) {
   const { peso, altura, idade, sexo, rotina, objetivo } = perfil;
   const tmb = 10 * peso + 6.25 * altura - 5 * idade + (sexo === 'F' ? -161 : 5);
   const base = FATOR_ROTINA[rotina] ?? FATOR_ROTINA.sentado;
-  const fator = tipo === 'treino' ? base + EXTRA_TREINO : base;
-  const kcal = tmb * fator * (AJUSTE_OBJETIVO[objetivo] ?? 1);
+  const exercicio = tipo === 'treino' ? kcalExercicio(perfil, treino) : 0;
+  const fator = tipo === 'treino' && exercicio === 0 ? base + EXTRA_TREINO : base;
+  const kcal = (tmb * fator + exercicio) * (AJUSTE_OBJETIVO[objetivo] ?? 1);
   const prot = peso * (tipo === 'treino' ? 2.0 : 1.8);
   const gord = peso * 0.9;
   const carb = Math.max(0, (kcal - prot * 4 - gord * 9) / 4);
-  const metas = { tmb, kcal, prot, carb, gord, ...metasMicros(perfil, kcal) };
+  const metas = { tmb, kcal, exercicio, prot, carb, gord, ...metasMicros(perfil, kcal) };
   for (const a of AMINOACIDOS) metas[a.k] = (a.mgPorKg * peso) / 1000;
   return metas;
 }
@@ -101,7 +126,7 @@ export function contarNaMeta(tot, metas) {
 
 export function resumoDia(dia, catalogo, perfil) {
   const tot = somarDia(dia, catalogo);
-  const metas = calcularMetas(perfil, dia.tipo);
+  const metas = calcularMetas(perfil, dia.tipo, dia.treino);
   return {
     tot,
     metas,
@@ -142,7 +167,8 @@ export function sugerirPara(alvo, alimentos) {
   return { alimento: melhor.al, qtd: melhor.max, fornece: melhor.porUn * melhor.max, parcial: true };
 }
 
-export function sugestoes(tot, metas, alimentos) {
+// prioridade: chaves de nutrientes que os exames de sangue mostraram baixos.
+export function sugestoes(tot, metas, alimentos, prioridade = []) {
   const alvos = [];
   for (const n of MICROS) {
     if (n.limite || tot[n.k] >= metas[n.k] * 0.9) continue;
@@ -152,10 +178,14 @@ export function sugestoes(tot, metas, alimentos) {
     if (tot[n.k] >= metas[n.k] * 0.9) continue;
     alvos.push({ ...n, meta: metas[n.k], falta: metas[n.k] - tot[n.k], ideia: IDEIAS.amino });
   }
-  // Nutrientes do cérebro vêm primeiro (foco mental é a prioridade do João).
-  const peso = (a) => (CEREBRO.includes(a.k) ? 0 : 1);
+  // Ordem: o que o exame mostrou baixo, depois os nutrientes do cérebro
+  // (foco mental é a prioridade do João), depois o resto.
+  const peso = (a) => (prioridade.includes(a.k) ? 0 : CEREBRO.includes(a.k) ? 1 : 2);
   alvos.sort((a, b) => peso(a) - peso(b));
-  for (const a of alvos) a.cerebro = CEREBRO.includes(a.k);
+  for (const a of alvos) {
+    a.cerebro = CEREBRO.includes(a.k);
+    a.exame = prioridade.includes(a.k);
+  }
   const lista = alvos.map((alvo) => ({ alvo, sugestao: sugerirPara(alvo, alimentos) }));
 
   // Plano combinado: resolve do nutriente mais em falta para o menos e, a cada
@@ -176,9 +206,10 @@ export function sugestoes(tot, metas, alimentos) {
 }
 
 // ---------- água ----------
-// 35 ml por kg de peso, mais 500 ml no dia de treino.
-export function metaAgua(perfil, tipo) {
-  return Math.round(perfil.peso * 35 + (tipo === 'treino' ? 500 : 0));
+// 35 ml por kg de peso. No treino: +500 ml, ou ~8 ml por minuto se for mais longo.
+export function metaAgua(perfil, tipo, treino = null) {
+  const extra = tipo === 'treino' ? Math.max(500, (Number(treino?.minutos) || 0) * 8) : 0;
+  return Math.round(perfil.peso * 35 + extra);
 }
 
 // ---------- cafeína ----------

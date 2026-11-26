@@ -13,12 +13,18 @@ essenciais**, com metas diferentes para **dia de treino** e **dia comum**.
   vitamina D e magnésio), os contadores de **água** e **cafeína** (com aviso de
   cafeína tarde) e um aviso de **energia instável** quando o dia tem muito
   açúcar e pouca fibra e proteína.
+  Também tem o **check-in do dia** (horas e qualidade do sono, energia, foco e
+  humor, de 1 a 5), o **treino detalhado** (modalidade, duração e intensidade,
+  que ajustam as calorias do dia), as **refeições salvas** (marcar várias coisas
+  com um toque) e o lembrete semanal de **pesagem**.
 - **Análise**: tudo o que está baixo, na meta ou acima do limite, e sugestões
   de quanto comer dos seus alimentos para fechar as metas.
-- **Histórico**: últimos dias; toque num dia para ver e corrigir.
+- **Histórico**: **relatório da semana** (médias, nutrientes que ficaram baixos e
+  3 ajustes para a próxima semana), **gráfico de peso**, e últimos dias; toque num dia para ver e corrigir.
 - **Alimentos**: o cardápio. Ligue ou desligue alimentos da lista rápida, apague
   ou cadastre manualmente.
-- **Perfil**: peso, altura, idade, sexo, rotina e objetivo (as metas se calculam
+- **Perfil**: **exames de sangue** (vitamina D, B12, ferritina, magnésio, folato,
+  zinco, índice ômega-3; o que estiver baixo vira prioridade nas sugestões), peso, altura, idade, sexo, rotina e objetivo (as metas se calculam
   sozinhas), tema claro/escuro/automático e backup.
 
 ## Instalar no celular
